@@ -1,21 +1,9 @@
 name: Claude YouTube → Notion 일일 자동화
 
 on:
-  # ───── 매일 오전 8시 (KST = UTC+9) 자동 실행 ─────
   schedule:
-    - cron: "0 23 * * *"   # UTC 23:00 = KST 08:00
-
-  # ───── 수동 실행 (GitHub Actions 탭에서 버튼 클릭) ─────
+    - cron: "0 23 * * *"
   workflow_dispatch:
-    inputs:
-      force_run:
-        description: "신규 영상이 없어도 강제 실행"
-        required: false
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
 
 jobs:
   collect-and-upload:
@@ -24,39 +12,18 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      # ── 1. 저장소 체크아웃 ──────────────────────────────
       - name: 📦 저장소 체크아웃
         uses: actions/checkout@v4
 
-      # ── 2. Node.js 설정 ──────────────────────────────────
       - name: ⚙️ Node.js 설정
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
-      # ── 3. 의존성 설치 (없으면 스킵) ─────────────────────
-      - name: 📥 의존성 설치
-        run: |
-          if [ -f package.json ]; then
-            npm ci
-          else
-            echo "package.json 없음 — Node 내장 fetch 사용 (v18+)"
-          fi
-
-      # ── 4. 자동화 스크립트 실행 ────────────────────────────
       - name: 🚀 자동화 실행
         env:
           ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
           NOTION_API_KEY:     ${{ secrets.NOTION_API_KEY }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
           NOTION_PARENT_PAGE: ${{ secrets.NOTION_PARENT_PAGE }}
-          FORCE_RUN:          ${{ github.event.inputs.force_run || 'false' }}
         run: node automation.js
-
-      # ── 5. 실행 결과 요약 출력 ────────────────────────────
-      - name: 📋 실행 결과 요약
-        if: always()
-        run: |
-          echo "=============================="
-          echo " 실행 완료: $(date '+%Y-%m-%d %H:%M:%S KST' --date='9 hours')"
-          echo "=============================="
