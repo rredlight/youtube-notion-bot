@@ -27,3 +27,7 @@ jobs:
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
           NOTION_PARENT_PAGE: ${{ secrets.NOTION_PARENT_PAGE }}
         run: node automation.js
+
+      - name: 📋 실행 결과 요약
+        if: always()
+        run: echo "완료 $(date)"
