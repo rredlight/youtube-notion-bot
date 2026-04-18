@@ -32,7 +32,7 @@ jobs:
       - name: ⚙️ Node.js 설정
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       # ── 3. 의존성 설치 (없으면 스킵) ─────────────────────
       - name: 📥 의존성 설치
