@@ -51,7 +51,7 @@ jobs:
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
           NOTION_PARENT_PAGE: ${{ secrets.NOTION_PARENT_PAGE }}
           FORCE_RUN:          ${{ github.event.inputs.force_run || 'false' }}
-        run: node src/automation.js
+        run: node automation.js
 
       # ── 5. 실행 결과 요약 출력 ────────────────────────────
       - name: 📋 실행 결과 요약
