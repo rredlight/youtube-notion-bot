@@ -80,7 +80,7 @@ async function searchNewVideos(existingUrls, targetCount = 5) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5-20251022",
+        model: "claude-sonnet-4-6",
         max_tokens: 2000,
         system: systemPrompt,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
