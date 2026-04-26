@@ -75,10 +75,7 @@ async function searchNewVideos(existingUrls, targetCount = 5) {
   const today = new Date().toISOString().slice(0, 10);
   const excludeList = [...existingUrls].slice(0, 50).join("\n");
 
-  const messages = [
-    {
-      role: "user",
-      content: `오늘(${today}) 기준으로 YouTube에서 "Claude AI 사용법", "Claude AI tutorial", "Anthropic Claude 교육" 관련 최신 영상을 검색해줘.
+  const prompt = `오늘(${today}) 기준으로 YouTube에서 "Claude AI 사용법", "Claude AI tutorial", "Anthropic Claude 교육" 관련 최신 영상을 웹 검색으로 찾아줘.
 
 【중요 조건】
 - 최근 90일 이내 업로드된 영상 우선
@@ -86,7 +83,7 @@ async function searchNewVideos(existingUrls, targetCount = 5) {
 - 아래 URL 목록은 이미 수집된 영상이므로 반드시 제외:
 ${excludeList || "(없음 — 최초 실행)"}
 
-결과는 반드시 아래 JSON 배열 형식으로만 답해. 마크다운 없이 순수 JSON만.
+검색 후 결과를 반드시 아래 JSON 배열 형식으로만 답해. 마크다운 코드블록 없이 순수 JSON만.
 [
   {
     "title": "영상 제목",
@@ -98,40 +95,62 @@ ${excludeList || "(없음 — 최초 실행)"}
     "summary": "2~3문장 요약 (한국어)",
     "isNew": true
   }
-]
+]`;
 
-목표: 신규 영상 최대 ${targetCount}개. 신규 영상이 ${targetCount}개 미만이면 있는 것만 반환.`,
-    },
-  ];
+  let messages = [{ role: "user", content: prompt }];
+  let videos = [];
 
-  const data = await apiFetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 2000,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
-      messages,
-    }),
-  });
+  // 최대 5번 반복 (tool_use 처리)
+  for (let i = 0; i < 5; i++) {
+    const data = await apiFetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 2000,
+        tools: [{ type: "web_search_20250305", name: "web_search" }],
+        messages,
+      }),
+    });
 
-  const rawText = data.content?.find((b) => b.type === "text")?.text || "[]";
-  console.log("검색 결과 원본:", rawText.slice(0, 500));
+    console.log(`  [턴 ${i+1}] stop_reason: ${data.stop_reason}`);
 
-  try {
-    const cleaned = rawText.replace(/```json|```/g, "").trim();
-    const match = cleaned.match(/\[[\s\S]*\]/);
-    const videos = JSON.parse(match?.[0] || "[]");
-    return videos.filter((v) => !existingUrls.has(v.url?.trim()));
-  } catch {
-    console.error("❌ 영상 목록 파싱 실패:", rawText.slice(0, 300));
-    return [];
+    // assistant 응답을 대화에 추가
+    messages.push({ role: "assistant", content: data.content });
+
+    if (data.stop_reason === "end_turn") {
+      // 최종 텍스트 응답 파싱
+      const rawText = data.content?.find((b) => b.type === "text")?.text || "[]";
+      console.log("최종 응답:", rawText.slice(0, 500));
+      try {
+        const cleaned = rawText.replace(/```json|```/g, "").trim();
+        const match = cleaned.match(/\[[\s\S]*\]/);
+        videos = JSON.parse(match?.[0] || "[]");
+      } catch {
+        console.error("❌ 파싱 실패:", rawText.slice(0, 300));
+      }
+      break;
+    }
+
+    if (data.stop_reason === "tool_use") {
+      // tool_use 블록 처리
+      const toolUseBlocks = data.content.filter((b) => b.type === "tool_use");
+      const toolResults = toolUseBlocks.map((b) => ({
+        type: "tool_result",
+        tool_use_id: b.id,
+        content: "검색을 완료했습니다. 찾은 결과를 JSON 형식으로 정리해주세요.",
+      }));
+      messages.push({ role: "user", content: toolResults });
+    }
   }
+
+  return videos.filter((v) => v.url && !existingUrls.has(v.url?.trim()));
 }
+
 // ─────────────────────────────────────────────
 // 3. Claude: 각 영상 핵심 분석
 // ─────────────────────────────────────────────
