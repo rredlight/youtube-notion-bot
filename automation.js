@@ -247,7 +247,7 @@ async function main() {
 
   console.log("📤 [4/4] 노션 업로드 중...");
   const pageUrl = await createDailySummaryPage(newVideos, today);
-  await saveVideosToDB(newVideos, today);
+  // await saveVideosToDB(newVideos, today);
 
   console.log(`\n✅ 완료! 노션 페이지: ${pageUrl}\n`);
 }
