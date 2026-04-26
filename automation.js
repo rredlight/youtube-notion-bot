@@ -74,7 +74,6 @@ async function getExistingUrls() {
 async function searchNewVideos(existingUrls, targetCount = 5) {
   const today = new Date().toISOString().slice(0, 10);
   const excludeList = [...existingUrls].slice(0, 50).join("\n");
-  console.log("검색 결과 원본:", text.slice(0, 500));
 
   const messages = [
     {
@@ -82,7 +81,7 @@ async function searchNewVideos(existingUrls, targetCount = 5) {
       content: `오늘(${today}) 기준으로 YouTube에서 "Claude AI 사용법", "Claude AI tutorial", "Anthropic Claude 교육" 관련 최신 영상을 검색해줘.
 
 【중요 조건】
-- 최근 30일 이내 업로드된 영상 우선
+- 최근 90일 이내 업로드된 영상 우선
 - 조회수 높은 순서로 선별
 - 아래 URL 목록은 이미 수집된 영상이므로 반드시 제외:
 ${excludeList || "(없음 — 최초 실행)"}
@@ -120,19 +119,19 @@ ${excludeList || "(없음 — 최초 실행)"}
     }),
   });
 
-  const text = data.content?.find((b) => b.type === "text")?.text || "[]";
+  const rawText = data.content?.find((b) => b.type === "text")?.text || "[]";
+  console.log("검색 결과 원본:", rawText.slice(0, 500));
+
   try {
-    const cleaned = text.replace(/```json|```/g, "").trim();
+    const cleaned = rawText.replace(/```json|```/g, "").trim();
     const match = cleaned.match(/\[[\s\S]*\]/);
     const videos = JSON.parse(match?.[0] || "[]");
-    // 혹시라도 기존 URL이 포함된 경우 한번 더 필터
     return videos.filter((v) => !existingUrls.has(v.url?.trim()));
   } catch {
-    console.error("❌ 영상 목록 파싱 실패:", text.slice(0, 300));
+    console.error("❌ 영상 목록 파싱 실패:", rawText.slice(0, 300));
     return [];
   }
 }
-
 // ─────────────────────────────────────────────
 // 3. Claude: 각 영상 핵심 분석
 // ─────────────────────────────────────────────
