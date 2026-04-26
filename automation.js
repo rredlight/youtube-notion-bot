@@ -74,6 +74,7 @@ async function getExistingUrls() {
 async function searchNewVideos(existingUrls, targetCount = 5) {
   const today = new Date().toISOString().slice(0, 10);
   const excludeList = [...existingUrls].slice(0, 50).join("\n");
+  console.log("검색 결과 원본:", text.slice(0, 500));
 
   const messages = [
     {
